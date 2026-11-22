@@ -6,7 +6,7 @@
 
 ## Team & Collaboration
 
-- **Collaborators**: Shaili & Raj
+
 - **Repository**: [https://github.com/ShailiSrivastava/MULE-TRACE-](https://github.com/ShailiSrivastava/MULE-TRACE-)
 - **Default Branch**: `main`
 
