@@ -1,0 +1,85 @@
+# Root .gitignore for MuleTrace Project
+# Collaborators: Shaili & Raj
+
+# Environment & Secret files (NEVER commit secrets or real credentials)
+.env
+.env.*
+!.env.example
+*.env
+*.env.local
+
+# Operating System Files
+.DS_Store
+Thumbs.db
+desktop.ini
+$RECYCLE.BIN/
+
+# IDE & Editor Configurations
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+*.sublime-project
+*.sublime-workspace
+*.swp
+*.swo
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Database & Storage
+*.sqlite
+*.sqlite3
+*.db
+local_data/
+
+# -----------------------------------------------------------------------------
+# Frontend (Node / Vite / React / TypeScript)
+# -----------------------------------------------------------------------------
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+frontend/.cache/
+frontend/.vite/
+frontend/coverage/
+
+# -----------------------------------------------------------------------------
+# Backend (Python / FastAPI / SQLAlchemy / Pytest)
+# -----------------------------------------------------------------------------
+backend/__pycache__/
+backend/*/__pycache__/
+backend/*/*/__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Python Virtual Environments
+.venv/
+venv/
+env/
+ENV/
+backend/.venv/
+backend/venv/
+backend/env/
+
+# Python Distribution / Build
+backend/build/
+backend/dist/
+backend/*.egg-info/
+*.egg
+
+# Testing & Coverage
+backend/.pytest_cache/
+backend/.coverage
+backend/htmlcov/
+backend/.mypy_cache/
+backend/.ruff_cache/
+
+# TypeScript build cache
+*.tsbuildinfo
+
+*.tsbuildinfo
