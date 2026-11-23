@@ -3,6 +3,7 @@ import { Sidebar } from './components/layout/Sidebar';
 import { Header } from './components/layout/Header';
 import { OverviewDashboard } from './components/dashboard/OverviewDashboard';
 import { TransactionsView } from './components/transactions/TransactionsView';
+import { NetworkGraphView } from './components/graph/NetworkGraphView';
 import { PlaceholderView } from './components/views/PlaceholderView';
 import { LoginView } from './components/auth/LoginView';
 import { NavTabId } from './types/navigation';
@@ -81,6 +82,10 @@ export default function App({ initialAuthenticated = false }: AppProps = {}) {
             />
           ) : activeTab === 'transactions' ? (
             <TransactionsView
+              onNavigateHome={() => setActiveTab('overview')}
+            />
+          ) : activeTab === 'graph' ? (
+            <NetworkGraphView
               onNavigateHome={() => setActiveTab('overview')}
             />
           ) : (
