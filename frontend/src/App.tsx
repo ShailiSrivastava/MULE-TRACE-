@@ -6,7 +6,8 @@ import { TransactionsView } from './components/transactions/TransactionsView';
 import { NetworkGraphView } from './components/graph/NetworkGraphView';
 import { AlertsView } from './components/alerts/AlertsView';
 import { CasesView } from './components/cases/CasesView';
-import { PlaceholderView } from './components/views/PlaceholderView';
+import { RiskAnalysisView } from './components/risk/RiskAnalysisView';
+import { ReportsView } from './components/reports/ReportsView';
 import { LoginView } from './components/auth/LoginView';
 import { NavTabId } from './types/navigation';
 
@@ -98,11 +99,16 @@ export default function App({ initialAuthenticated = false }: AppProps = {}) {
             <CasesView
               onNavigateHome={() => setActiveTab('overview')}
             />
-          ) : (
-            <PlaceholderView
-              tab={activeTab}
+          ) : activeTab === 'risk' ? (
+            <RiskAnalysisView
               onNavigateHome={() => setActiveTab('overview')}
             />
+          ) : activeTab === 'reports' ? (
+            <ReportsView
+              onNavigateHome={() => setActiveTab('overview')}
+            />
+          ) : (
+            null
           )}
         </main>
       </div>
