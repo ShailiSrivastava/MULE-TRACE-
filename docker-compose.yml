@@ -1,0 +1,63 @@
+name: muletrace
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: muletrace-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB in .env or with --env-file}
+      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in .env or with --env-file}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env or with --env-file}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - muletrace_network
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  redis:
+    image: redis:7-alpine
+    container_name: muletrace-redis
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env or with --env-file}
+    command:
+      - sh
+      - -c
+      - exec redis-server --appendonly yes --save 60 1 --requirepass "$$REDIS_PASSWORD"
+    ports:
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - muletrace_network
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - REDISCLI_AUTH="$${REDIS_PASSWORD}" redis-cli ping | grep -q PONG
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 5s
+
+volumes:
+  postgres_data:
+    external: true
+    name: mule-trace_postgres_data
+  redis_data:
+    external: true
+    name: mule-trace_redis_data
+
+networks:
+  muletrace_network:
+    name: muletrace_network
+    driver: bridge

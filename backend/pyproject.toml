@@ -1,3 +1,9 @@
+[project]
+name = "muletrace-backend"
+version = "0.1.0"
+description = "Backend API for the MuleTrace investigation platform"
+requires-python = ">=3.12"
+
 [tool.pytest.ini_options]
 minversion = "8.0"
 addopts = "-ra -q"
@@ -6,4 +12,7 @@ testpaths = [
 ]
 pythonpath = [
     "."
+]
+markers = [
+    "integration: requires a running PostgreSQL service",
 ]
