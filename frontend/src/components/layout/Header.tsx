@@ -5,12 +5,14 @@ import {
   Bell,
   Settings,
   ShieldCheck,
+  LogOut,
 } from 'lucide-react';
 import { NavTabId } from '../../types/navigation';
 
 interface HeaderProps {
   activeTab: NavTabId;
   onOpenSidebar: () => void;
+  onSignOut?: () => void;
 }
 
 const TAB_TITLES: Record<NavTabId, string> = {
@@ -26,6 +28,7 @@ const TAB_TITLES: Record<NavTabId, string> = {
 export const Header: React.FC<HeaderProps> = ({
   activeTab,
   onOpenSidebar,
+  onSignOut,
 }) => {
   const currentTitle = TAB_TITLES[activeTab] || 'Overview Dashboard';
 
@@ -65,7 +68,7 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      {/* Right: Controls & Avatar */}
+      {/* Right: Controls, Avatar & Sign Out */}
       <div className="flex items-center gap-3">
         {/* Notifications */}
         <button
@@ -99,6 +102,18 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           </div>
         </div>
+
+        {/* Sign Out Action Button */}
+        {onSignOut && (
+          <button
+            onClick={onSignOut}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-purple-900/80 hover:text-rose-600 hover:bg-rose-50 border border-purple-200/80 hover:border-rose-200 transition shadow-sm"
+            title="Sign out of investigator session"
+          >
+            <LogOut className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Sign Out</span>
+          </button>
+        )}
       </div>
     </header>
   );

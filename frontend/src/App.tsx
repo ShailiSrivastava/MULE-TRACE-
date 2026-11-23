@@ -3,13 +3,28 @@ import { Sidebar } from './components/layout/Sidebar';
 import { Header } from './components/layout/Header';
 import { OverviewDashboard } from './components/dashboard/OverviewDashboard';
 import { PlaceholderView } from './components/views/PlaceholderView';
+import { LoginView } from './components/auth/LoginView';
 import { NavTabId } from './types/navigation';
 
-export default function App() {
+export interface AppProps {
+  initialAuthenticated?: boolean;
+}
+
+export default function App({ initialAuthenticated = false }: AppProps = {}) {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(initialAuthenticated);
   const [activeTab, setActiveTab] = useState<NavTabId>('overview');
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
   const [apiStatus, setApiStatus] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+
+  const handleAuthenticated = () => {
+    setIsAuthenticated(true);
+  };
+
+  const handleSignOut = () => {
+    setIsAuthenticated(false);
+    setActiveTab('overview');
+  };
 
   const handleCheckHealth = async () => {
     setIsLoading(true);
@@ -30,6 +45,10 @@ export default function App() {
     }
   };
 
+  if (!isAuthenticated) {
+    return <LoginView onAuthenticated={handleAuthenticated} />;
+  }
+
   return (
     <div className="min-h-screen bg-[#F4F0FF] text-[#1E1B4B] flex flex-col antialiased">
       {/* Sidebar Navigation */}
@@ -38,6 +57,7 @@ export default function App() {
         onTabChange={setActiveTab}
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
+        onSignOut={handleSignOut}
       />
 
       {/* Main Content Area */}
@@ -46,6 +66,7 @@ export default function App() {
         <Header
           activeTab={activeTab}
           onOpenSidebar={() => setIsSidebarOpen(true)}
+          onSignOut={handleSignOut}
         />
 
         {/* Dynamic Page Views */}
