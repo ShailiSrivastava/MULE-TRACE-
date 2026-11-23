@@ -4,6 +4,8 @@ import { Header } from './components/layout/Header';
 import { OverviewDashboard } from './components/dashboard/OverviewDashboard';
 import { TransactionsView } from './components/transactions/TransactionsView';
 import { NetworkGraphView } from './components/graph/NetworkGraphView';
+import { AlertsView } from './components/alerts/AlertsView';
+import { CasesView } from './components/cases/CasesView';
 import { PlaceholderView } from './components/views/PlaceholderView';
 import { LoginView } from './components/auth/LoginView';
 import { NavTabId } from './types/navigation';
@@ -86,6 +88,14 @@ export default function App({ initialAuthenticated = false }: AppProps = {}) {
             />
           ) : activeTab === 'graph' ? (
             <NetworkGraphView
+              onNavigateHome={() => setActiveTab('overview')}
+            />
+          ) : activeTab === 'alerts' ? (
+            <AlertsView
+              onNavigateHome={() => setActiveTab('overview')}
+            />
+          ) : activeTab === 'cases' ? (
+            <CasesView
               onNavigateHome={() => setActiveTab('overview')}
             />
           ) : (

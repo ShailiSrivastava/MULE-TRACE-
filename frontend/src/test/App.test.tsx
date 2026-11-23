@@ -19,7 +19,7 @@ describe('MuleTrace Authentication & Navigation Flow', () => {
         name: /Preview Investigator Workspace \(Demo Session\)/i,
       }),
     ).toBeInTheDocument();
-    expect(screen.getAllByText(/Shaili & Raj/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/Enterprise AML & Network Intelligence|MuleTrace/i).length).toBeGreaterThanOrEqual(1);
   });
 
   it('displays form validation errors for invalid email and short password', async () => {
@@ -96,9 +96,9 @@ describe('MuleTrace Authentication & Navigation Flow', () => {
     expect(screen.getAllByText(/Financial Intelligence/i).length).toBeGreaterThanOrEqual(1);
   });
 
-  it('displays collaborators Shaili & Raj in workspace', () => {
+  it('displays enterprise AML label in workspace', () => {
     render(<App initialAuthenticated={true} />);
-    expect(screen.getByText(/Shaili & Raj/i)).toBeInTheDocument();
+    expect(screen.getByText(/AML Detection Engine/i)).toBeInTheDocument();
   });
 
   it('renders all 7 navigation links in the sidebar', () => {
@@ -143,8 +143,20 @@ describe('MuleTrace Authentication & Navigation Flow', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Mule Network Graph' })).toBeInTheDocument();
     expect(screen.getByText(/Ready for Cytoscape.js graph state/i)).toBeInTheDocument();
 
+    // Click Suspicious Alerts
+    const alertsLink = screen.getByText('Suspicious Alerts');
+    fireEvent.click(alertsLink);
+    expect(screen.getByRole('heading', { level: 1, name: 'Suspicious Alerts' })).toBeInTheDocument();
+    expect(screen.getByText(/Ready for FastAPI \/api\/v1\/alerts streaming endpoints/i)).toBeInTheDocument();
+
+    // Click Investigation Cases
+    const casesLink = screen.getByText('Investigation Cases');
+    fireEvent.click(casesLink);
+    expect(screen.getByRole('heading', { level: 1, name: 'Investigation Cases' })).toBeInTheDocument();
+    expect(screen.getByText(/Ready for FastAPI \/api\/v1\/cases persistence models/i)).toBeInTheDocument();
+
     // Return to Overview
-    const backButton = screen.getByRole('button', { name: /Back to Overview/i });
+    const backButton = screen.getAllByRole('button', { name: /Back to Overview/i })[0];
     fireEvent.click(backButton);
     expect(screen.getByText('Financial Intelligence Overview')).toBeInTheDocument();
   });

@@ -8,7 +8,6 @@ import {
   ShieldAlert,
   FileSpreadsheet,
   X,
-  Users,
   LogOut,
 } from 'lucide-react';
 import { NavTabId } from '../../types/navigation';
@@ -128,18 +127,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
           })}
         </div>
 
-        {/* Footer / Team Collaboration Indicator & Sign Out */}
+        {/* Footer / System Status & Sign Out */}
         <div className="p-4 border-t border-purple-900/40 bg-black/20 space-y-2">
           <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-white/5 border border-purple-500/20 backdrop-blur-sm">
-            <div className="h-8 w-8 rounded-lg bg-purple-600/30 border border-purple-400/30 flex items-center justify-center text-purple-200 shadow-sm">
-              <Users className="h-4 w-4" />
+            <div className="h-8 w-8 rounded-lg bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center text-emerald-300 shadow-sm">
+              <ShieldAlert className="h-4 w-4" />
             </div>
             <div className="overflow-hidden">
               <div className="text-xs font-bold text-white truncate">
-                Shaili &amp; Raj
+                AML Detection Engine
               </div>
               <div className="text-[10px] text-purple-300/70 truncate">
-                Financial Crime Squad
+                Workspace Active
               </div>
             </div>
           </div>

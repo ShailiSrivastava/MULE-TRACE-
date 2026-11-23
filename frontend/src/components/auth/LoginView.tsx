@@ -11,7 +11,6 @@ import {
   ShieldCheck,
   ArrowRight,
   Sparkles,
-  Users,
   CheckCircle2,
 } from 'lucide-react';
 
@@ -66,7 +65,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onAuthenticated }) => {
   const handleDemoLogin = () => {
     onAuthenticated({
       email: 'investigator@muletrace.internal',
-      name: 'Shaili & Raj',
+      name: 'Investigator',
     });
   };
 
@@ -130,14 +129,13 @@ export const LoginView: React.FC<LoginViewProps> = ({ onAuthenticated }) => {
             </div>
           </div>
 
-          {/* Collaborator Footer */}
+          {/* Enterprise Footer */}
           <div className="pt-8 mt-6 border-t border-purple-900/40">
-            <div className="flex items-center gap-2 text-xs text-purple-300/80">
-              <Users className="h-4 w-4 text-purple-400" />
-              <span>Collaborators: Shaili &amp; Raj</span>
+            <div className="text-xs text-purple-300/80 font-semibold">
+              Enterprise AML & Network Intelligence
             </div>
             <div className="text-[10px] text-purple-400/60 mt-0.5">
-              Financial Crime Squad
+              Secure Investigator Workspace
             </div>
           </div>
         </div>

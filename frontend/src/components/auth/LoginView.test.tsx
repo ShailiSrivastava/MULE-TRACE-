@@ -17,7 +17,7 @@ describe('LoginView Component', () => {
         name: /Preview Investigator Workspace \(Demo Session\)/i,
       }),
     ).toBeInTheDocument();
-    expect(screen.getByText(/Shaili & Raj/i)).toBeInTheDocument();
+    expect(screen.getByText(/Enterprise AML & Network Intelligence/i)).toBeInTheDocument();
   });
 
   it('toggles password visibility when show/hide button is clicked', () => {
