@@ -13,6 +13,9 @@ def main() -> None:
         port=settings.API_PORT,
         reload=settings.ENVIRONMENT == "development",
         log_level=settings.LOG_LEVEL.lower(),
+        access_log=False,
+        proxy_headers=settings.PROXY_HEADERS_ENABLED,
+        forwarded_allow_ips=settings.FORWARDED_ALLOW_IPS,
     )
 
 

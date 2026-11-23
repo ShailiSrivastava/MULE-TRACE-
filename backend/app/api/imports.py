@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies.auth import get_current_user
 from app.core.database import get_db
+from app.core.rate_limit import CsvUploadRateLimit
 from app.models import ImportJob, User
 from app.schemas.imports import CsvRowError, ImportJobResponse, ImportResult
 from app.schemas.pagination import PageResponse, page_response
@@ -52,6 +53,7 @@ def import_accounts(
     file: Annotated[UploadFile, File(description="Canonical accounts CSV")],
     db: Annotated[Session, Depends(get_db)],
     actor: Annotated[User, Depends(get_current_user)],
+    _rate_limit: CsvUploadRateLimit,
 ) -> ImportResult:
     try:
         job, issues = import_accounts_csv(
@@ -86,6 +88,7 @@ def import_transactions(
     file: Annotated[UploadFile, File(description="Canonical transactions CSV")],
     db: Annotated[Session, Depends(get_db)],
     actor: Annotated[User, Depends(get_current_user)],
+    _rate_limit: CsvUploadRateLimit,
 ) -> ImportResult:
     try:
         job, issues = import_transactions_csv(

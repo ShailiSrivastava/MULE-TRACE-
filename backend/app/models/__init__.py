@@ -13,7 +13,14 @@ from app.models.finding import (
     FindingTransaction,
 )
 from app.models.import_job import ImportJob
-from app.models.investigation import CaseAccount, CaseAlert, InvestigationCase
+from app.models.investigation import (
+    CaseAccount,
+    CaseAlert,
+    CaseFinding,
+    CaseNote,
+    CaseNoteRevision,
+    InvestigationCase,
+)
 from app.models.ml_registry import MLModelRegistryRecord
 from app.models.transaction import Transaction
 from app.models.user import User
@@ -24,6 +31,9 @@ __all__ = [
     "AuditLog",
     "CaseAccount",
     "CaseAlert",
+    "CaseFinding",
+    "CaseNote",
+    "CaseNoteRevision",
     "Dataset",
     "DetectionAlert",
     "DetectionFinding",

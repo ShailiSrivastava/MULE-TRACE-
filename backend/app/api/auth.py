@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.api.dependencies.auth import get_current_user
 from app.core.config import settings
 from app.core.database import get_db
+from app.core.rate_limit import AuthRateLimit
 from app.models import User
 from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse, UserResponse
 from app.security.tokens import TokenConfigurationError, create_access_token
@@ -27,7 +28,11 @@ router = APIRouter(tags=["Authentication"])
     status_code=status.HTTP_201_CREATED,
     summary="Register an analyst account",
 )
-def register(payload: RegisterRequest, db: Annotated[Session, Depends(get_db)]) -> User:
+def register(
+    payload: RegisterRequest,
+    db: Annotated[Session, Depends(get_db)],
+    _rate_limit: AuthRateLimit,
+) -> User:
     """Create an active, least-privileged account with an Argon2 password hash."""
 
     try:
@@ -50,7 +55,9 @@ def register(payload: RegisterRequest, db: Annotated[Session, Depends(get_db)]) 
     summary="Exchange credentials for an access token",
 )
 def login(
-    payload: LoginRequest, db: Annotated[Session, Depends(get_db)]
+    payload: LoginRequest,
+    db: Annotated[Session, Depends(get_db)],
+    _rate_limit: AuthRateLimit,
 ) -> TokenResponse:
     """Authenticate credentials and return a signed short-lived access token."""
 

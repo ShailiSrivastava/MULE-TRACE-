@@ -21,6 +21,12 @@ class AuditLog(Base):
     __tablename__ = "audit_logs"
     __table_args__ = (
         Index("ix_audit_logs_entity", "entity_type", "entity_id"),
+        Index(
+            "ix_audit_logs_entity_created",
+            "entity_type",
+            "entity_id",
+            "created_at",
+        ),
         Index("ix_audit_logs_actor_created", "actor_user_id", "created_at"),
         Index("ix_audit_logs_request_id", "request_id"),
     )

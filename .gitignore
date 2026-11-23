@@ -5,8 +5,10 @@
 .env
 .env.*
 !.env.example
+!.env.production.example
 *.env
 *.env.local
+.secrets/
 
 # Operating System Files
 .DS_Store

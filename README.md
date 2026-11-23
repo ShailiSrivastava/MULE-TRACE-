@@ -169,7 +169,7 @@ python run.py
 
 - **API Root**: [http://127.0.0.1:8000/](http://127.0.0.1:8000/)
 - **Liveness Check**: [http://127.0.0.1:8000/health/live](http://127.0.0.1:8000/health/live)
-- **Readiness Check**: [http://127.0.0.1:8000/health/ready](http://127.0.0.1:8000/health/ready) (requires PostgreSQL)
+- **Readiness Check**: [http://127.0.0.1:8000/health/ready](http://127.0.0.1:8000/health/ready) (requires PostgreSQL and Redis)
 - **Versioned API Root**: [http://127.0.0.1:8000/api/v1](http://127.0.0.1:8000/api/v1)
 - **Interactive Swagger Docs**: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
 
@@ -227,7 +227,7 @@ The backend reads environment variables from the process first, then the project
 
 For future application containers, build a fresh project-specific image from the current repository Dockerfile with `docker compose build --no-cache <service>` before startup. Do not rely on an image built from another project or an older MuleTrace source revision.
 
-`/health` remains available for compatibility and reports process liveness. `/health/live` is the explicit liveness endpoint. `/health/ready` checks PostgreSQL and returns HTTP 503 while the database is unavailable.
+`/health` remains available for compatibility and reports process liveness. `/health/live` is the explicit liveness endpoint. `/health/ready` checks PostgreSQL and Redis and returns HTTP 503 while either dependency is unavailable.
 
 ## Database Schema
 
@@ -255,10 +255,14 @@ The pure, deterministic Phase 8 suspicious-pattern detectors and their configura
 
 Phase 10 adds a backend-only unsupervised anomaly analysis package with cutoff-safe account/transaction features, train-only preprocessing, Isolation Forest, novelty LOF, and K-Means. Grouped holdout evaluation uses only explicit ground-truth labels in a separate workflow. Model metadata is persisted by additive revision `b18f3a9d2c74`; fitted estimators remain process-local and are not serialized. ML findings pass through a controlled Phase 9 adapter without directly modifying risk scores. See [Machine Learning and Anomaly Detection](docs/MACHINE_LEARNING.md) for feature definitions, methodology, and limitations.
 
-Phase 11 adds authenticated asynchronous analysis jobs backed by the existing Redis service and Celery workers. PostgreSQL stores job lifecycle and stage progress; task payloads contain only a job UUID and use JSON serialization. Start a worker and the periodic recovery scheduler from `backend/` using the commands in [Background Processing](docs/BACKGROUND_PROCESSING.md). The additive migration `c7e4a91d2f60` preserves existing analysis rows.
+Phase 11 adds authenticated asynchronous analysis jobs backed by the existing Redis service and Celery workers. PostgreSQL stores job lifecycle and stage progress; task payloads contain only a job UUID and use JSON serialization. Start a worker and the periodic recovery scheduler from `backend/` using the commands in [Background Processing](docs/BACKGROUND_PROCESSING.md). The additive migration `c7e4a91d2f60` preserves existing analysis rows; subsequent case-management migrations bring the current schema to `e7f192c4a60d`.
 
 ## Security & Secrets Management
 
 - **NEVER** commit `.env` files to git. All credentials, passwords, and sensitive configurations are ignored by `.gitignore`.
 - Use `.env.example` as a template for adding new environment variables.
 - Use a different randomly generated `JWT_SECRET_KEY` in each environment. Replacing a key invalidates tokens signed with the previous key.
+
+## Production Deployment and Operations
+
+Phase 14 adds a separate production Compose profile with a fresh non-root MuleTrace image, PostgreSQL and Redis services, Celery worker and Beat, explicit migrations, readiness checks, protected metrics, production configuration validation, request limits, and dependency health checks. It uses project-specific `muletrace_prod_*` volumes and does not mount the existing development volumes. See [Production Operations](docs/OPERATIONS.md) for exact image/container names, ports, secret-file setup, deployment and migration commands, and PostgreSQL backup/restore procedures. GitHub Actions verifies backend tests, Ruff, compilation, migrations, dependencies, frontend regression checks, and a fresh backend image build; it does not deploy automatically.

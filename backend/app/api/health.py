@@ -1,9 +1,11 @@
 """Process liveness and dependency readiness endpoints."""
 
 from fastapi import APIRouter, HTTPException
+from redis.exceptions import RedisError
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.core.database import DatabaseNotConfiguredError, check_database_connection
+from app.core.redis import check_redis_connection
 
 router = APIRouter(tags=["Health"])
 
@@ -30,14 +32,21 @@ def liveness_check() -> dict[str, str]:
 
 
 @router.get("/health/ready", summary="Check that required services are ready")
-def readiness_check() -> dict[str, object]:
-    """Report readiness only when the configured database answers a query."""
+def readiness_check() -> dict[str, str]:
+    """Report readiness without disclosing which internal dependency is failing."""
     try:
         check_database_connection()
-    except (DatabaseNotConfiguredError, SQLAlchemyError) as exc:
+        check_redis_connection()
+    except (
+        DatabaseNotConfiguredError,
+        SQLAlchemyError,
+        RedisError,
+        OSError,
+        ValueError,
+    ) as exc:
         raise HTTPException(
             status_code=503,
-            detail="The database is unavailable.",
+            detail="The service is not ready.",
         ) from exc
 
-    return {"status": "ready", "checks": {"database": "ok"}}
+    return {"status": "ready"}

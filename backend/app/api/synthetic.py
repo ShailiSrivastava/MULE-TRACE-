@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies.auth import get_current_user
 from app.core.database import get_db
+from app.core.rate_limit import SensitiveWriteRateLimit
 from app.models import User
 from app.schemas.synthetic import (
     SyntheticGenerationRequest,
@@ -35,6 +36,7 @@ def generate_synthetic_dataset(
     payload: SyntheticGenerationRequest,
     db: Annotated[Session, Depends(get_db)],
     actor: Annotated[User, Depends(get_current_user)],
+    _rate_limit: SensitiveWriteRateLimit,
 ) -> SyntheticGenerationResponse:
     try:
         return SyntheticGenerationResponse.model_validate(

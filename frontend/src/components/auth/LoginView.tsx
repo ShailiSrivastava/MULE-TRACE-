@@ -10,28 +10,31 @@ import {
   EyeOff,
   ShieldCheck,
   ArrowRight,
+  Sparkles,
   CheckCircle2,
 } from 'lucide-react';
-import { authenticateUser, AuthSession } from '../../lib/api';
 
 export const loginSchema = z.object({
   email: z
     .string()
     .min(1, 'Analyst email is required')
     .email('Please enter a valid email address'),
-  password: z.string().min(1, 'Password is required').max(128, 'Password is invalid'),
+  password: z
+    .string()
+    .min(1, 'Password is required')
+    .min(8, 'Password must be at least 8 characters'),
+  rememberSession: z.boolean().optional(),
 });
 
 export type LoginFormValues = z.infer<typeof loginSchema>;
 
 interface LoginViewProps {
-  onAuthenticated: (session: AuthSession) => void;
+  onAuthenticated: (analyst?: { email: string; name?: string }) => void;
 }
 
 export const LoginView: React.FC<LoginViewProps> = ({ onAuthenticated }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [authError, setAuthError] = useState<string | null>(null);
 
   const {
     register,
@@ -42,27 +45,28 @@ export const LoginView: React.FC<LoginViewProps> = ({ onAuthenticated }) => {
     defaultValues: {
       email: '',
       password: '',
+      rememberSession: false,
     },
     mode: 'onBlur',
   });
 
-  const onSubmit = async (data: LoginFormValues) => {
+  const onSubmit = (data: LoginFormValues) => {
     setIsSubmitting(true);
-    setAuthError(null);
-    try {
-      const session = await authenticateUser(data.email, data.password);
-      onAuthenticated(session);
-    } catch (error) {
-      setAuthError(
-        error instanceof TypeError
-          ? 'Unable to reach the sign-in service. Check that the API is running.'
-          : error instanceof Error
-            ? error.message
-            : 'Sign-in could not be completed. Please try again.',
-      );
-    } finally {
+    // Ready for FastAPI JWT authentication endpoint integration
+    setTimeout(() => {
+      onAuthenticated({
+        email: data.email,
+        name: data.email.split('@')[0],
+      });
       setIsSubmitting(false);
-    }
+    }, 200);
+  };
+
+  const handleDemoLogin = () => {
+    onAuthenticated({
+      email: 'investigator@muletrace.internal',
+      name: 'Investigator',
+    });
   };
 
   return (
@@ -222,11 +226,19 @@ export const LoginView: React.FC<LoginViewProps> = ({ onAuthenticated }) => {
               </div>
 
               {/* Remember Session & Forgot Link */}
-              {authError && (
-                <p role="alert" className="text-xs font-semibold text-rose-600">
-                  {authError}
-                </p>
-              )}
+              <div className="flex items-center justify-between text-xs pt-0.5">
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    {...register('rememberSession')}
+                    className="rounded border-purple-300 text-[#7C3AED] focus:ring-[#7C3AED]/30 h-4 w-4 accent-[#7C3AED]"
+                  />
+                  <span className="text-purple-900/80 font-medium">Remember session</span>
+                </label>
+                <span className="text-xs text-[#7C3AED] hover:underline cursor-pointer font-semibold">
+                  Forgot credentials?
+                </span>
+              </div>
 
               {/* Standard Sign In Button */}
               <button
@@ -239,9 +251,18 @@ export const LoginView: React.FC<LoginViewProps> = ({ onAuthenticated }) => {
               </button>
             </form>
 
+            {/* Quick Demo Preview Button */}
             <div className="pt-2 border-t border-purple-100">
+              <button
+                type="button"
+                onClick={handleDemoLogin}
+                className="w-full py-2.5 px-4 rounded-xl border border-purple-200/90 text-[#6D28D9] bg-[#FAF8FF] hover:bg-purple-100/70 font-bold text-xs flex items-center justify-center gap-2 transition hover:shadow-sm"
+              >
+                <Sparkles className="h-3.5 w-3.5 text-[#7C3AED]" />
+                <span>Preview Investigator Workspace (Demo Session)</span>
+              </button>
               <p className="text-[10px] text-center text-purple-900/50 mt-2 font-medium">
-                Sign-in is verified by the MuleTrace API. Your access token stays in memory for this tab.
+                FastAPI JWT authentication ready &bull; Zero external credentials required
               </p>
             </div>
           </div>

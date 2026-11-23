@@ -125,7 +125,17 @@ def test_celery_configuration_uses_json_and_isolated_queues():
     assert "muletrace.analysis.recover_stale" in celery_app.tasks
 
 
-def test_redis_broker_url_encodes_password_and_settings_bound_limits():
+def test_redis_broker_url_encodes_password_and_settings_bound_limits(monkeypatch):
+    for name in (
+        "REDIS_HOST",
+        "REDIS_PORT",
+        "REDIS_DB",
+        "REDIS_PASSWORD",
+        "REDIS_PASSWORD_FILE",
+        "CELERY_BROKER_URL",
+        "CELERY_BROKER_URL_FILE",
+    ):
+        monkeypatch.delenv(name, raising=False)
     configured = Settings(
         _env_file=None,
         REDIS_HOST="redis.internal",

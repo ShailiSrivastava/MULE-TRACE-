@@ -24,6 +24,9 @@ def test_server_entrypoint_uses_configured_server_settings(monkeypatch):
         "port": 8123,
         "reload": False,
         "log_level": "warning",
+        "access_log": False,
+        "proxy_headers": False,
+        "forwarded_allow_ips": "127.0.0.1",
     }
 
 

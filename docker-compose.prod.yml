@@ -1,0 +1,310 @@
+name: muletrace
+
+x-backend-image: &backend-image
+  image: muletrace/backend:${MULETRACE_IMAGE_TAG:?Set a versioned MuleTrace image tag}
+  build:
+    context: .
+    dockerfile: backend/Dockerfile
+
+x-backend-environment: &backend-environment
+  ENVIRONMENT: production
+  DEBUG: "false"
+  LOG_LEVEL: ${LOG_LEVEL:-INFO}
+  API_HOST: 0.0.0.0
+  API_PORT: "8000"
+  HEALTHCHECK_HOST: ${HEALTHCHECK_HOST:-api.muletrace.example}
+  TRUSTED_HOSTS: ${TRUSTED_HOSTS:?Set explicit production host names}
+  CORS_ORIGINS: ${CORS_ORIGINS:?Set explicit HTTPS browser origins}
+  PROXY_HEADERS_ENABLED: ${PROXY_HEADERS_ENABLED:-false}
+  FORWARDED_ALLOW_IPS: ${FORWARDED_ALLOW_IPS:-127.0.0.1}
+  JWT_SECRET_KEY_FILE: /run/secrets/jwt_secret_key
+  METRICS_TOKEN_FILE: /run/secrets/metrics_token
+  METRICS_ENABLED: ${METRICS_ENABLED:-true}
+  POSTGRES_USER: ${POSTGRES_USER:?Set the production PostgreSQL user}
+  POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+  POSTGRES_SERVER: postgres-prod
+  POSTGRES_PORT: "5432"
+  POSTGRES_DB: ${POSTGRES_DB:?Set the production PostgreSQL database}
+  DATABASE_SSLMODE: ${DATABASE_SSLMODE:-disable}
+  DATABASE_ECHO: "false"
+  DATABASE_POOL_SIZE: ${DATABASE_POOL_SIZE:-10}
+  DATABASE_MAX_OVERFLOW: ${DATABASE_MAX_OVERFLOW:-10}
+  DATABASE_POOL_TIMEOUT: ${DATABASE_POOL_TIMEOUT:-30}
+  DATABASE_POOL_RECYCLE: ${DATABASE_POOL_RECYCLE:-1800}
+  DATABASE_CONNECT_TIMEOUT: ${DATABASE_CONNECT_TIMEOUT:-5}
+  SLOW_QUERY_THRESHOLD_MS: ${SLOW_QUERY_THRESHOLD_MS:-1000}
+  REDIS_HOST: redis-prod
+  REDIS_PORT: "6379"
+  REDIS_DB: "0"
+  REDIS_PASSWORD_FILE: /run/secrets/redis_password
+  REDIS_CONNECT_TIMEOUT: "2"
+  REDIS_SOCKET_TIMEOUT: "2"
+  MAX_REQUEST_BODY_BYTES: ${MAX_REQUEST_BODY_BYTES:-12582912}
+  CSV_MAX_UPLOAD_BYTES: ${CSV_MAX_UPLOAD_BYTES:-10485760}
+  CSV_MAX_ROWS: ${CSV_MAX_ROWS:-10000}
+  AUTH_RATE_LIMIT_REQUESTS: ${AUTH_RATE_LIMIT_REQUESTS:-10}
+  AUTH_RATE_LIMIT_WINDOW_SECONDS: ${AUTH_RATE_LIMIT_WINDOW_SECONDS:-60}
+  CSV_UPLOAD_RATE_LIMIT_REQUESTS: ${CSV_UPLOAD_RATE_LIMIT_REQUESTS:-10}
+  CSV_UPLOAD_RATE_LIMIT_WINDOW_SECONDS: ${CSV_UPLOAD_RATE_LIMIT_WINDOW_SECONDS:-3600}
+  ANALYSIS_MAX_ACTIVE_PER_DATASET: ${ANALYSIS_MAX_ACTIVE_PER_DATASET:-1}
+  ANALYSIS_MAX_ACTIVE_PER_USER: ${ANALYSIS_MAX_ACTIVE_PER_USER:-3}
+  ANALYSIS_MAX_RETRIES: ${ANALYSIS_MAX_RETRIES:-3}
+  ANALYSIS_TASK_SOFT_TIME_LIMIT: ${ANALYSIS_TASK_SOFT_TIME_LIMIT:-3300}
+  ANALYSIS_TASK_TIME_LIMIT: ${ANALYSIS_TASK_TIME_LIMIT:-3600}
+  ANALYSIS_STALE_JOB_SECONDS: ${ANALYSIS_STALE_JOB_SECONDS:-3900}
+  ANALYSIS_BROKER_CONNECT_TIMEOUT: ${ANALYSIS_BROKER_CONNECT_TIMEOUT:-2}
+
+services:
+  postgres-prod:
+    image: postgres:16.16-alpine3.24
+    container_name: muletrace-prod-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?Set the production PostgreSQL database}
+      POSTGRES_USER: ${POSTGRES_USER:?Set the production PostgreSQL user}
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets:
+      - postgres_password
+    volumes:
+      - muletrace_prod_postgres_data:/var/lib/postgresql/data
+    networks:
+      - muletrace_prod_network
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
+    shm_size: 256mb
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "5"
+
+  redis-prod:
+    image: redis:7.4.12-alpine3.22
+    container_name: muletrace-prod-redis
+    restart: unless-stopped
+    secrets:
+      - redis_password
+    command:
+      - sh
+      - -c
+      - |
+        set -eu
+        redis_password="$$(cat /run/secrets/redis_password)"
+        printf 'requirepass %s\nappendonly yes\nsave 60 1\n' "$$redis_password" > /tmp/redis.conf
+        chmod 600 /tmp/redis.conf
+        unset redis_password
+        exec redis-server /tmp/redis.conf --dir /data
+    volumes:
+      - muletrace_prod_redis_data:/data
+    tmpfs:
+      - /tmp:size=1m,mode=0700
+    networks:
+      - muletrace_prod_network
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - REDISCLI_AUTH="$$(cat /run/secrets/redis_password)" redis-cli ping | grep -q PONG
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "5"
+
+  api-prod:
+    <<: *backend-image
+    container_name: muletrace-prod-api
+    restart: unless-stopped
+    environment: *backend-environment
+    secrets:
+      - postgres_password
+      - redis_password
+      - jwt_secret_key
+      - metrics_token
+    depends_on:
+      postgres-prod:
+        condition: service_healthy
+      redis-prod:
+        condition: service_healthy
+    ports:
+      - "${MULETRACE_API_BIND_ADDRESS:-127.0.0.1}:${MULETRACE_API_PORT:-8000}:8000"
+    networks:
+      - muletrace_prod_network
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 256
+    mem_limit: 2g
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "from urllib.request import Request, urlopen; request = Request('http://127.0.0.1:8000/health/live', headers={'Host': __import__('os').environ['HEALTHCHECK_HOST']}); response = urlopen(request, timeout=3); raise SystemExit(0 if response.status == 200 else 1)"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "5"
+
+  worker-prod:
+    <<: *backend-image
+    container_name: muletrace-prod-worker
+    restart: unless-stopped
+    environment: *backend-environment
+    secrets:
+      - postgres_password
+      - redis_password
+      - jwt_secret_key
+      - metrics_token
+    command:
+      - celery
+      - -A
+      - app.tasks.celery_app:celery_app
+      - worker
+      - --pool=prefork
+      - --concurrency=2
+      - --queues=muletrace.analysis,muletrace.maintenance
+      - --loglevel=INFO
+    depends_on:
+      postgres-prod:
+        condition: service_healthy
+      redis-prod:
+        condition: service_healthy
+    networks:
+      - muletrace_prod_network
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 512
+    mem_limit: 4g
+    stop_grace_period: 65m
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -m
+        - app.tasks.worker_health
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 45s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "5"
+
+  beat-prod:
+    <<: *backend-image
+    container_name: muletrace-prod-beat
+    restart: unless-stopped
+    environment: *backend-environment
+    secrets:
+      - postgres_password
+      - redis_password
+      - jwt_secret_key
+      - metrics_token
+    command:
+      - celery
+      - -A
+      - app.tasks.celery_app:celery_app
+      - beat
+      - --loglevel=INFO
+      - --schedule=/tmp/celerybeat-schedule
+    depends_on:
+      redis-prod:
+        condition: service_healthy
+    networks:
+      - muletrace_prod_network
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 128
+    mem_limit: 512m
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "5"
+
+  migrate-prod:
+    <<: *backend-image
+    container_name: muletrace-prod-migrate
+    profiles:
+      - migrations
+    entrypoint:
+      - alembic
+    command:
+      - upgrade
+      - head
+    environment: *backend-environment
+    secrets:
+      - postgres_password
+      - redis_password
+      - jwt_secret_key
+      - metrics_token
+    depends_on:
+      postgres-prod:
+        condition: service_healthy
+      redis-prod:
+        condition: service_healthy
+    networks:
+      - muletrace_prod_network
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+networks:
+  muletrace_prod_network:
+    name: muletrace_prod_network
+    driver: bridge
+    internal: true
+
+volumes:
+  muletrace_prod_postgres_data:
+    name: muletrace_prod_postgres_data
+  muletrace_prod_redis_data:
+    name: muletrace_prod_redis_data
+
+secrets:
+  postgres_password:
+    file: ${POSTGRES_PASSWORD_FILE:?Set POSTGRES_PASSWORD_FILE}
+  redis_password:
+    file: ${REDIS_PASSWORD_FILE:?Set REDIS_PASSWORD_FILE}
+  jwt_secret_key:
+    file: ${JWT_SECRET_KEY_FILE:?Set JWT_SECRET_KEY_FILE}
+  metrics_token:
+    file: ${METRICS_TOKEN_FILE:?Set METRICS_TOKEN_FILE}

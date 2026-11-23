@@ -50,6 +50,8 @@ For future application images, rebuild from the current MuleTrace Dockerfile wit
 
 ## 3. Backend Setup (FastAPI & Python)
 
+Production deployment, secret-file configuration, image builds, and safe PostgreSQL backup/restore procedures are documented in [Production Operations](OPERATIONS.md). Do not use the development `.env` or development database volumes for a production deployment.
+
 Open PowerShell at the repository root, then enter the backend directory:
 
 ```powershell
@@ -86,7 +88,7 @@ pytest
 ```powershell
 alembic upgrade head
 ```
-This applies the empty baseline and all additive schema revisions through `c7e4a91d2f60`, including the analysis-job lifecycle fields. Existing user, dataset, and analysis records are preserved.
+This applies the additive schema revisions through the current `e7f192c4a60d` head, including analysis-job lifecycle and case-history fields. Existing user, dataset, analysis, and case records are preserved.
 
 ### Step 2.6: Start the Backend Server
 ```powershell
@@ -94,7 +96,7 @@ python run.py
 ```
 - API Root: `http://127.0.0.1:8000/`
 - Liveness: `http://127.0.0.1:8000/health/live`
-- Readiness: `http://127.0.0.1:8000/health/ready` (requires PostgreSQL)
+- Readiness: `http://127.0.0.1:8000/health/ready` (requires PostgreSQL and Redis)
 - Versioned API Root: `http://127.0.0.1:8000/api/v1`
 - Interactive Swagger Docs: `http://127.0.0.1:8000/docs`
 

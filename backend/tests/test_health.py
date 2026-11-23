@@ -43,11 +43,12 @@ def test_liveness_endpoint_does_not_require_database(client):
 
 def test_readiness_endpoint_checks_database(client, monkeypatch):
     monkeypatch.setattr("app.api.health.check_database_connection", lambda: None)
+    monkeypatch.setattr("app.api.health.check_redis_connection", lambda: None)
 
     response = client.get("/health/ready")
 
     assert response.status_code == 200
-    assert response.json() == {"status": "ready", "checks": {"database": "ok"}}
+    assert response.json() == {"status": "ready"}
 
 
 def test_readiness_reports_database_unavailable(client, monkeypatch):
@@ -79,6 +80,32 @@ def test_readiness_reports_missing_database_configuration(client, monkeypatch):
     assert response.status_code == 503
     assert response.json()["error"]["code"] == "service_unavailable"
     assert "database configuration is missing" not in response.text
+
+
+def test_readiness_hides_redis_failure_details(client, monkeypatch):
+    monkeypatch.setattr("app.api.health.check_database_connection", lambda: None)
+
+    def fail_redis_check():
+        from redis.exceptions import RedisError
+
+        raise RedisError("redis host and credentials should stay private")
+
+    monkeypatch.setattr("app.api.health.check_redis_connection", fail_redis_check)
+    response = client.get("/health/ready")
+
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "service_unavailable"
+    assert "redis host" not in response.text
+    assert "checks" not in response.json()
+
+
+def test_security_headers_are_added_to_api_responses(client):
+    response = client.get("/health/live")
+
+    assert response.headers["x-content-type-options"] == "nosniff"
+    assert response.headers["x-frame-options"] == "DENY"
+    assert response.headers["referrer-policy"] == "no-referrer"
+    assert response.headers["cache-control"] == "no-store"
 
 
 def test_versioned_api_root(client):

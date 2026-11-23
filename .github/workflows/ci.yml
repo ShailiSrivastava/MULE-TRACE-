@@ -1,0 +1,115 @@
+name: MuleTrace CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend checks and image build
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16.16-alpine3.24
+        env:
+          POSTGRES_DB: muletrace_test
+          POSTGRES_USER: muletrace_test
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U muletrace_test -d muletrace_test"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+      redis:
+        image: redis:7.4.12-alpine3.22
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 3s --health-retries 12
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Install backend and lint dependencies
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt ruff pip-audit
+      - name: Check dependency compatibility
+        run: python -m pip check
+      - name: Audit production dependencies
+        working-directory: backend
+        run: python -m pip_audit -r requirements-prod.txt
+      - name: Create isolated test configuration
+        working-directory: backend
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from secrets import token_urlsafe
+
+          settings = [
+              "ENVIRONMENT=test",
+              "DEBUG=False",
+              "DATABASE_URL=postgresql+psycopg2://muletrace_test@localhost:5432/muletrace_test",
+              "POSTGRES_USER=muletrace_test",
+              "POSTGRES_SERVER=localhost",
+              "POSTGRES_DB=muletrace_test",
+              "REDIS_HOST=localhost",
+              "REDIS_PORT=6379",
+              "CELERY_BROKER_URL=redis://localhost:6379/0",
+              f"JWT_SECRET_KEY={token_urlsafe(48)}",
+          ]
+          Path(".env").write_text("\n".join(settings) + "\n", encoding="utf-8")
+          PY
+      - name: Apply migrations to a fresh database
+        working-directory: backend
+        run: alembic upgrade head
+      - name: Check Alembic metadata
+        working-directory: backend
+        run: alembic check
+      - name: Run backend tests
+        working-directory: backend
+        run: pytest -q
+      - name: Run Ruff
+        working-directory: backend
+        run: ruff check .
+      - name: Compile backend modules
+        working-directory: backend
+        run: python -m compileall -q app alembic run.py tests
+      - name: Build a fresh MuleTrace image
+        run: docker build --pull --no-cache --tag muletrace/backend:ci-${{ github.sha }} --file backend/Dockerfile .
+      - name: Remove temporary test configuration
+        if: always()
+        run: rm -f backend/.env
+
+  frontend:
+    name: Frontend regression checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Run frontend tests
+        working-directory: frontend
+        run: npm test -- --reporter=dot
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build

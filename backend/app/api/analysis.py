@@ -13,6 +13,8 @@ from sqlalchemy.orm import Session
 from app.api.dependencies.auth import get_current_user
 from app.core.database import get_db
 from app.core.model_base import utc_now
+from app.core.observability import request_id_context
+from app.core.rate_limit import SensitiveWriteRateLimit
 from app.models import AnalysisJob, User
 from app.schemas.analysis import (
     AnalysisCancelResponse,
@@ -100,6 +102,7 @@ def submit_analysis(
     payload: AnalysisSubmission,
     db: Annotated[Session, Depends(get_db)],
     actor: Annotated[User, Depends(get_current_user)],
+    _rate_limit: SensitiveWriteRateLimit,
     idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
 ) -> AnalysisJobResponse:
     digest = _digest_idempotency_key(idempotency_key)
@@ -136,6 +139,7 @@ def submit_analysis(
                 task_id=job.task_id,
                 queue=ANALYSIS_QUEUE,
                 serializer="json",
+                headers={"request_id": request_id_context.get()},
             )
         except BrokerUnavailable as exc:
             if created:
@@ -218,6 +222,7 @@ def cancel_dataset_analysis(
     job_id: UUID,
     db: Annotated[Session, Depends(get_db)],
     actor: Annotated[User, Depends(get_current_user)],
+    _rate_limit: SensitiveWriteRateLimit,
 ) -> AnalysisCancelResponse:
     try:
         require_owned_dataset(db, dataset_id, actor.id)

@@ -24,7 +24,7 @@ if TYPE_CHECKING:
     from app.models.analysis import AnalysisJob
     from app.models.audit_log import AuditLog
     from app.models.dataset import Dataset
-    from app.models.investigation import InvestigationCase
+    from app.models.investigation import CaseNoteRevision, InvestigationCase
 
 
 class User(Base):
@@ -79,6 +79,16 @@ class User(Base):
     created_cases: Mapped[list[InvestigationCase]] = relationship(
         back_populates="created_by",
         foreign_keys="InvestigationCase.created_by_id",
+        passive_deletes="all",
+    )
+    assigned_cases: Mapped[list[InvestigationCase]] = relationship(
+        back_populates="assigned_to",
+        foreign_keys="InvestigationCase.assigned_to_id",
+        passive_deletes="all",
+    )
+    edited_case_note_revisions: Mapped[list[CaseNoteRevision]] = relationship(
+        back_populates="edited_by",
+        foreign_keys="CaseNoteRevision.edited_by_id",
         passive_deletes="all",
     )
     audit_logs: Mapped[list[AuditLog]] = relationship(

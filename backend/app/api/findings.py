@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies.auth import get_current_user, require_roles
 from app.core.database import get_db
+from app.core.rate_limit import SensitiveWriteRateLimit
 from app.models import FindingStatus, User, UserRole
 from app.schemas.findings import (
     AccountRiskSummary,
@@ -274,6 +275,7 @@ def patch_finding_status(
         User,
         Depends(require_roles(UserRole.ADMIN, UserRole.INVESTIGATOR)),
     ],
+    _rate_limit: SensitiveWriteRateLimit,
 ) -> FindingDetail:
     try:
         transition_finding_status(
@@ -310,6 +312,7 @@ def patch_finding_assignment(
         User,
         Depends(require_roles(UserRole.ADMIN, UserRole.INVESTIGATOR)),
     ],
+    _rate_limit: SensitiveWriteRateLimit,
 ) -> FindingDetail:
     try:
         assign_finding(

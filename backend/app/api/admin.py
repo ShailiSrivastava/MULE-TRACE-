@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies.auth import require_roles
 from app.core.database import get_db
+from app.core.rate_limit import SensitiveWriteRateLimit
 from app.models import User, UserRole
 from app.schemas.auth import ActivationUpdate, RoleUpdate, UserResponse
 from app.services.auth import (
@@ -29,6 +30,7 @@ def update_activation(
     payload: ActivationUpdate,
     db: Annotated[Session, Depends(get_db)],
     actor: Annotated[User, Depends(require_roles(UserRole.ADMIN))],
+    _rate_limit: SensitiveWriteRateLimit,
 ) -> User:
     """Change account activation state; only an administrator may call this."""
 
@@ -58,6 +60,7 @@ def update_role(
     payload: RoleUpdate,
     db: Annotated[Session, Depends(get_db)],
     actor: Annotated[User, Depends(require_roles(UserRole.ADMIN))],
+    _rate_limit: SensitiveWriteRateLimit,
 ) -> User:
     """Change role only from a protected administrator workflow."""
 

@@ -13,8 +13,6 @@ interface HeaderProps {
   activeTab: NavTabId;
   onOpenSidebar: () => void;
   onSignOut?: () => void;
-  userName?: string;
-  userRole?: string;
 }
 
 const TAB_TITLES: Record<NavTabId, string> = {
@@ -31,8 +29,6 @@ export const Header: React.FC<HeaderProps> = ({
   activeTab,
   onOpenSidebar,
   onSignOut,
-  userName = 'Authenticated user',
-  userRole = 'ANALYST',
 }) => {
   const currentTitle = TAB_TITLES[activeTab] || 'Overview Dashboard';
 
@@ -94,15 +90,15 @@ export const Header: React.FC<HeaderProps> = ({
         {/* User Avatar */}
         <div className="flex items-center gap-2 pl-2 border-l border-purple-200/70">
           <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-[#6D28D9] to-[#9333EA] text-white flex items-center justify-center font-bold text-xs shadow-md shadow-purple-600/30 ring-1 ring-purple-300">
-                {userName.slice(0, 2).toUpperCase()}
+            SR
           </div>
           <div className="hidden xl:block text-left">
             <div className="text-xs font-bold text-[#1E1B4B] leading-none">
-              {userName}
+              Financial Investigator
             </div>
             <div className="text-[10px] text-purple-900/60 font-medium leading-none mt-1 flex items-center gap-1">
               <ShieldCheck className="h-3 w-3 text-[#7C3AED]" />
-              {userRole}
+              Compliance Tier 1
             </div>
           </div>
         </div>

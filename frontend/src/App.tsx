@@ -10,7 +10,6 @@ import { RiskAnalysisView } from './components/risk/RiskAnalysisView';
 import { ReportsView } from './components/reports/ReportsView';
 import { LoginView } from './components/auth/LoginView';
 import { NavTabId } from './types/navigation';
-import { AuthSession, getApiBaseUrl } from './lib/api';
 
 export interface AppProps {
   initialAuthenticated?: boolean;
@@ -18,19 +17,16 @@ export interface AppProps {
 
 export default function App({ initialAuthenticated = false }: AppProps = {}) {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(initialAuthenticated);
-  const [session, setSession] = useState<AuthSession | null>(null);
   const [activeTab, setActiveTab] = useState<NavTabId>('overview');
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
   const [apiStatus, setApiStatus] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  const handleAuthenticated = (authenticatedSession: AuthSession) => {
-    setSession(authenticatedSession);
+  const handleAuthenticated = () => {
     setIsAuthenticated(true);
   };
 
   const handleSignOut = () => {
-    setSession(null);
     setIsAuthenticated(false);
     setActiveTab('overview');
   };
@@ -38,7 +34,7 @@ export default function App({ initialAuthenticated = false }: AppProps = {}) {
   const handleCheckHealth = async () => {
     setIsLoading(true);
     setApiStatus(null);
-    const baseUrl = getApiBaseUrl();
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
     try {
       const res = await fetch(`${baseUrl}/health`);
       if (res.ok) {
@@ -76,8 +72,6 @@ export default function App({ initialAuthenticated = false }: AppProps = {}) {
           activeTab={activeTab}
           onOpenSidebar={() => setIsSidebarOpen(true)}
           onSignOut={handleSignOut}
-          userName={session?.user.display_name || session?.user.email || 'Authenticated user'}
-          userRole={session?.user.role || 'ANALYST'}
         />
 
         {/* Dynamic Page Views */}

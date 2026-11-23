@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import logging
+from uuid import UUID
 
 from celery import Celery
-from celery.signals import worker_ready, worker_shutdown
+from celery.signals import task_postrun, task_prerun, worker_ready, worker_shutdown
 from kombu import Queue
 
 from app.core.config import settings
+from app.core.observability import request_id_context
 
 ANALYSIS_QUEUE = "muletrace.analysis"
 MAINTENANCE_QUEUE = "muletrace.maintenance"
@@ -89,3 +91,21 @@ def recover_jobs_on_worker_start(sender=None, **kwargs) -> None:
 @worker_shutdown.connect
 def log_worker_shutdown(sender=None, **kwargs) -> None:
     logger.info("analysis.worker.shutdown_requested")
+
+
+@task_prerun.connect
+def set_task_request_correlation(task=None, **kwargs) -> None:
+    """Restore only a valid UUID correlation ID from trusted task headers."""
+    headers = getattr(getattr(task, "request", None), "headers", None) or {}
+    raw_request_id = headers.get("request_id") if isinstance(headers, dict) else None
+    try:
+        normalized = str(UUID(raw_request_id)) if raw_request_id else None
+    except (TypeError, ValueError):
+        normalized = None
+    request_id_context.set(normalized)
+
+
+@task_postrun.connect
+def clear_task_request_correlation(**kwargs) -> None:
+    """Prevent task metadata from leaking to the next worker request context."""
+    request_id_context.set(None)

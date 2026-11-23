@@ -4,6 +4,13 @@ from pydantic import ValidationError
 from app.core.config import ENV_FILES, PROJECT_ROOT, Settings
 
 
+@pytest.fixture(autouse=True)
+def clear_ambient_settings_environment(monkeypatch):
+    """Make settings tests independent of the runner's environment."""
+    for name in Settings.model_fields:
+        monkeypatch.delenv(name, raising=False)
+
+
 def test_database_url_is_built_from_postgres_settings():
     settings = Settings(
         _env_file=None,
@@ -35,7 +42,15 @@ def test_explicit_database_url_overrides_postgres_settings():
     assert settings.sqlalchemy_database_url.database == "./muletrace-test.db"
 
 
-def test_database_url_is_unavailable_without_explicit_url_or_credentials():
+def test_database_url_is_unavailable_without_explicit_url_or_credentials(monkeypatch):
+    for name in (
+        "DATABASE_URL",
+        "DATABASE_URL_FILE",
+        "POSTGRES_USER",
+        "POSTGRES_PASSWORD",
+        "POSTGRES_PASSWORD_FILE",
+    ):
+        monkeypatch.delenv(name, raising=False)
     settings = Settings(_env_file=None)
 
     assert settings.POSTGRES_USER is None
@@ -43,7 +58,10 @@ def test_database_url_is_unavailable_without_explicit_url_or_credentials():
     assert settings.sqlalchemy_database_url is None
 
 
-def test_backend_environment_file_overrides_root_environment_file(tmp_path):
+def test_backend_environment_file_overrides_root_environment_file(
+    tmp_path, monkeypatch
+):
+    monkeypatch.delenv("PROJECT_NAME", raising=False)
     root_env = tmp_path / "root.env"
     backend_env = tmp_path / "backend.env"
     root_env.write_text("PROJECT_NAME=Root MuleTrace\n", encoding="utf-8")
@@ -63,6 +81,8 @@ def test_jwt_secret_has_no_hardcoded_default_and_loads_from_env_file(
     tmp_path, monkeypatch
 ):
     monkeypatch.delenv("JWT_SECRET_KEY", raising=False)
+    monkeypatch.delenv("JWT_SECRET_KEY_FILE", raising=False)
+    monkeypatch.delenv("JWT_ISSUER", raising=False)
     secret = "environment-only-secret-value-with-at-least-32-characters"
     env_file = tmp_path / "auth.env"
     env_file.write_text(
@@ -78,6 +98,20 @@ def test_jwt_secret_has_no_hardcoded_default_and_loads_from_env_file(
     assert configured.JWT_ISSUER == "integration-test"
 
 
+def test_jwt_secret_can_be_loaded_from_a_mounted_secret_file(tmp_path, monkeypatch):
+    monkeypatch.delenv("JWT_SECRET_KEY", raising=False)
+    monkeypatch.delenv("JWT_SECRET_KEY_FILE", raising=False)
+    secret_file = tmp_path / "jwt_secret"
+    secret_file.write_text("file-backed-test-secret-value\n", encoding="utf-8")
+
+    configured = Settings(
+        _env_file=None,
+        JWT_SECRET_KEY_FILE=str(secret_file),
+    )
+
+    assert configured.JWT_SECRET_KEY.get_secret_value() == "file-backed-test-secret-value"
+
+
 def test_process_environment_overrides_both_environment_files(tmp_path, monkeypatch):
     root_env = tmp_path / "root.env"
     backend_env = tmp_path / "backend.env"
@@ -90,7 +124,15 @@ def test_process_environment_overrides_both_environment_files(tmp_path, monkeypa
     assert settings.PROJECT_NAME == "Process MuleTrace"
 
 
-def test_empty_database_url_override_uses_postgres_settings(tmp_path):
+def test_empty_database_url_override_uses_postgres_settings(tmp_path, monkeypatch):
+    for name in (
+        "DATABASE_URL",
+        "DATABASE_URL_FILE",
+        "POSTGRES_USER",
+        "POSTGRES_PASSWORD",
+        "POSTGRES_PASSWORD_FILE",
+    ):
+        monkeypatch.delenv(name, raising=False)
     env_file = tmp_path / "backend.env"
     env_file.write_text(
         "DATABASE_URL=\nPOSTGRES_USER=environment_user\n"
@@ -114,6 +156,61 @@ def test_log_level_is_validated():
         Settings(_env_file=None, LOG_LEVEL="TRACE")
 
 
+def _valid_production_settings(**overrides):
+    values = {
+        "ENVIRONMENT": "production",
+        "DEBUG": False,
+        "JWT_SECRET_KEY": "production-test-secret-Varied-9362-azQK-81!muletrace",
+        "POSTGRES_USER": "muletrace_prod",
+        "POSTGRES_PASSWORD": "test-only-postgres-password",
+        "POSTGRES_SERVER": "postgres.internal",
+        "POSTGRES_DB": "muletrace_prod",
+        "REDIS_HOST": "redis.internal",
+        "REDIS_PASSWORD": "test-only-redis-password-42",
+        "TRUSTED_HOSTS": ["api.example.test"],
+        "CORS_ORIGINS": ["https://app.example.test"],
+    }
+    values.update(overrides)
+    return Settings(_env_file=None, **values)
+
+
+def test_production_configuration_requires_strong_secrets_and_explicit_origins():
+    configured = _valid_production_settings()
+
+    assert configured.ENVIRONMENT == "production"
+    assert configured.DEBUG is False
+    assert configured.sqlalchemy_database_url.get_backend_name() == "postgresql"
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"JWT_SECRET_KEY": "short"},
+        {"DEBUG": True},
+        {"TRUSTED_HOSTS": ["*"]},
+        {"TRUSTED_HOSTS": ["*.example.test"]},
+        {"CORS_ORIGINS": ["*"]},
+        {"CORS_ORIGINS": ["http://app.example.test"]},
+        {"CORS_ORIGINS": ["https://app.example.test/private"]},
+        {"DATABASE_URL": "sqlite:///./not-production.db"},
+        {"REDIS_PASSWORD": None},
+    ],
+)
+def test_invalid_production_configuration_fails_closed(overrides):
+    with pytest.raises(ValidationError, match="Invalid production configuration"):
+        _valid_production_settings(**overrides)
+
+
+def test_production_metrics_require_a_separate_token():
+    with pytest.raises(ValidationError, match="METRICS_TOKEN"):
+        _valid_production_settings(METRICS_ENABLED=True)
+
+
+def test_metrics_token_must_be_long_when_metrics_are_enabled():
+    with pytest.raises(ValidationError, match="METRICS_TOKEN"):
+        _valid_production_settings(METRICS_ENABLED=True, METRICS_TOKEN="short")
+
+
 def test_celery_settings_load_from_documented_environment_files(tmp_path, monkeypatch):
     root_env = tmp_path / ".env"
     backend_env = tmp_path / "backend.env"
@@ -129,7 +226,9 @@ def test_celery_settings_load_from_documented_environment_files(tmp_path, monkey
     for key in (
         "REDIS_HOST",
         "REDIS_PASSWORD",
+        "REDIS_PASSWORD_FILE",
         "CELERY_BROKER_URL",
+        "CELERY_BROKER_URL_FILE",
         "ANALYSIS_MAX_RETRIES",
     ):
         monkeypatch.delenv(key, raising=False)

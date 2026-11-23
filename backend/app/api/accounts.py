@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies.auth import get_current_user
 from app.core.database import get_db
+from app.core.rate_limit import SensitiveWriteRateLimit
 from app.models import User
 from app.schemas.accounts import AccountCreate, AccountResponse, AccountUpdate
 from app.schemas.pagination import PageResponse, page_response
@@ -52,6 +53,7 @@ def create_dataset_account(
     payload: AccountCreate,
     db: Annotated[Session, Depends(get_db)],
     actor: Annotated[User, Depends(get_current_user)],
+    _rate_limit: SensitiveWriteRateLimit,
 ) -> AccountResponse:
     try:
         account, transaction_count = create_account(
@@ -145,6 +147,7 @@ def patch_dataset_account(
     payload: AccountUpdate,
     db: Annotated[Session, Depends(get_db)],
     actor: Annotated[User, Depends(get_current_user)],
+    _rate_limit: SensitiveWriteRateLimit,
 ) -> AccountResponse:
     try:
         account, transaction_count = update_account(

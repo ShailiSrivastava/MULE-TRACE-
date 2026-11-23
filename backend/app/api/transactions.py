@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies.auth import get_current_user
 from app.core.database import get_db
+from app.core.rate_limit import SensitiveWriteRateLimit
 from app.models import User
 from app.schemas.pagination import PageResponse, page_response
 from app.schemas.transactions import (
@@ -75,6 +76,7 @@ def create_dataset_transaction(
     payload: TransactionCreate,
     db: Annotated[Session, Depends(get_db)],
     actor: Annotated[User, Depends(get_current_user)],
+    _rate_limit: SensitiveWriteRateLimit,
 ) -> TransactionResponse:
     try:
         transaction = create_transaction(
@@ -198,6 +200,7 @@ def patch_dataset_transaction(
     payload: TransactionUpdate,
     db: Annotated[Session, Depends(get_db)],
     actor: Annotated[User, Depends(get_current_user)],
+    _rate_limit: SensitiveWriteRateLimit,
 ) -> TransactionResponse:
     try:
         transaction = update_transaction(

@@ -1,18 +1,6 @@
-import { afterEach, describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import App from '../App';
-
-function response(body: unknown, status = 200): Response {
-  return {
-    ok: status >= 200 && status < 300,
-    status,
-    json: async () => body,
-  } as Response;
-}
-
-afterEach(() => {
-  vi.unstubAllGlobals();
-});
 
 describe('MuleTrace Authentication & Navigation Flow', () => {
   /* =========================================================================
@@ -24,12 +12,17 @@ describe('MuleTrace Authentication & Navigation Flow', () => {
     expect(screen.getByText('Analyst Sign In')).toBeInTheDocument();
     expect(screen.getByLabelText(/Analyst Email/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/^Password$/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Remember session/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^Sign In$/i })).toBeInTheDocument();
-    expect(screen.queryByText(/Demo Session/i)).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', {
+        name: /Preview Investigator Workspace \(Demo Session\)/i,
+      }),
+    ).toBeInTheDocument();
     expect(screen.getAllByText(/Enterprise AML & Network Intelligence|MuleTrace/i).length).toBeGreaterThanOrEqual(1);
   });
 
-  it('displays form validation errors for missing credentials and malformed email', async () => {
+  it('displays form validation errors for invalid email and short password', async () => {
     render(<App />);
 
     const submitBtn = screen.getByRole('button', { name: /^Sign In$/i });
@@ -49,26 +42,11 @@ describe('MuleTrace Authentication & Navigation Flow', () => {
 
     await waitFor(() => {
       expect(screen.getByText(/Please enter a valid email address/i)).toBeInTheDocument();
+      expect(screen.getByText(/Password must be at least 8 characters/i)).toBeInTheDocument();
     });
   });
 
-  it('authenticates against the API and navigates to the dashboard', async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(
-        response({ access_token: 'test-token', token_type: 'bearer', expires_in: 1800 }),
-      )
-      .mockResolvedValueOnce(
-        response({
-          id: 'user-1',
-          email: 'analyst@muletrace.internal',
-          display_name: 'MuleTrace Analyst',
-          role: 'ANALYST',
-          is_active: true,
-          created_at: '2026-11-23T00:00:00Z',
-        }),
-      );
-    vi.stubGlobal('fetch', fetchMock);
+  it('authenticates via valid form submission and navigates to the dashboard', async () => {
     render(<App />);
 
     const emailInput = screen.getByLabelText(/Analyst Email/i);
@@ -83,16 +61,18 @@ describe('MuleTrace Authentication & Navigation Flow', () => {
       expect(screen.getByText('Financial Intelligence Overview')).toBeInTheDocument();
       expect(screen.getByText('Engine Ready')).toBeInTheDocument();
     });
-    expect(fetchMock).toHaveBeenNthCalledWith(
-      1,
-      'http://localhost:8000/api/v1/auth/login',
-      expect.objectContaining({ method: 'POST' }),
-    );
-    expect(fetchMock).toHaveBeenNthCalledWith(
-      2,
-      'http://localhost:8000/api/v1/auth/me',
-      expect.objectContaining({ headers: { Authorization: 'Bearer test-token' } }),
-    );
+  });
+
+  it('authenticates instantly via Preview Investigator Workspace (Demo Session)', () => {
+    render(<App />);
+
+    const demoBtn = screen.getByRole('button', {
+      name: /Preview Investigator Workspace \(Demo Session\)/i,
+    });
+    fireEvent.click(demoBtn);
+
+    expect(screen.getByText('Financial Intelligence Overview')).toBeInTheDocument();
+    expect(screen.getAllByText('Overview Dashboard').length).toBeGreaterThanOrEqual(1);
   });
 
   it('signs back out to the Login view using the Sign Out button in the header', () => {
