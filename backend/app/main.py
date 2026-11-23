@@ -1,3 +1,4 @@
+﻿import app.core.database  # noqa: F401  (WDAC MetaPathFinder guard)
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -41,3 +42,4 @@ def read_root():
 @app.get("/health")
 def health():
     return {"status": "healthy", "service": "muletrace-backend", "version": "0.1.0"}
+
