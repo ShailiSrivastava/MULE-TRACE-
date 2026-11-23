@@ -11,7 +11,6 @@ class _WDACGuard(importlib.abc.MetaPathFinder):
                 return spec
         return None
 
-os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
 sys.meta_path.insert(0, _WDACGuard())
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
@@ -37,3 +36,4 @@ def get_db():
         yield db
     finally:
         db.close()
+

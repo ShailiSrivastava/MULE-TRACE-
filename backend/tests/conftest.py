@@ -11,7 +11,7 @@ class _WDACGuard(importlib.abc.MetaPathFinder):
                 return spec
         return None
 
-os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
+os.environ.setdefault("DATABASE_URL", "sqlite:///./test_muletrace.db")
 sys.meta_path.insert(0, _WDACGuard())
 import pytest
 from fastapi.testclient import TestClient
@@ -22,3 +22,4 @@ from app.main import app
 def client():
     with TestClient(app) as test_client:
         yield test_client
+
