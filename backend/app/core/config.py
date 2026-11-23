@@ -1,3 +1,5 @@
+﻿import os
+os.environ.setdefault('DATABASE_URL', 'sqlite:///:memory:')
 import os
 from typing import List
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -37,3 +39,5 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+
